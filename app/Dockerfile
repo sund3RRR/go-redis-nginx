@@ -1,6 +1,6 @@
 FROM debian:12.1
 
-RUN apt-get update && apt-get install wget -y
+RUN apt-get update && apt-get install wget ca-certificates -y
 
 ENV PATH /usr/local/go/bin:$PATH
 
