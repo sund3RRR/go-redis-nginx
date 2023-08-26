@@ -1,0 +1,27 @@
+services:
+  redis:
+    build:
+      context: ./redis
+    volumes:
+      - ./app/src/redis-server/redis-cert.pem:/etc/ssl/certs/redis-cert.pem
+      - ./app/src/redis-server/redis-private.key:/etc/ssl/private/redis-private.key
+      - ./app/src/redis-server/redis.conf:/etc/redis/redis.conf
+    restart: always
+    
+  app:
+    build:
+      context: ./app
+    restart: always
+    depends_on:
+      - redis
+    
+  nginx:
+    build:
+      context: ./nginx
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./app/src/nginx-config:/etc/nginx/
+    restart: always
+    depends_on:
+      - app
