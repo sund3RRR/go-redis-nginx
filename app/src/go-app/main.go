@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 
 	"github.com/redis/go-redis/v9"
@@ -103,8 +104,23 @@ func del_key(rdb *redis.Client) http.HandlerFunc {
 }
 
 func main() {
+	// cert, err := tls.LoadX509KeyPair("tls/redis.crt", "tls/redis.key")
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// // Load CA cert
+	// caCert, err := os.ReadFile("tls/ca.crt")
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// caCertPool := x509.NewCertPool()
+	// caCertPool.AppendCertsFromPEM(caCert)
 	tlsConfig := &tls.Config{
-		InsecureSkipVerify: false,
+		// MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: true,
+		// Certificates: []tls.Certificate{cert},
+		// RootCAs:      caCertPool,
 	}
 	rdb := redis.NewClient(&redis.Options{
 		Addr:      "redis:6378",
@@ -123,7 +139,7 @@ func main() {
 
 	pong, err := rdb.Ping(ctx).Result()
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	fmt.Println(pong)
 

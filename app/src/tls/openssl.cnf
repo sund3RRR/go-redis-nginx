@@ -1,0 +1,7 @@
+[ server_cert ]
+keyUsage = digitalSignature, keyEncipherment
+nsCertType = server
+[ client_cert ]
+keyUsage = digitalSignature, keyEncipherment
+nsCertType = client
+subjectAltName = DNS:xxx,IP:x.x.x.x,IP:127.0.0.1

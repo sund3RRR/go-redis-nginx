@@ -3,8 +3,7 @@ services:
     build:
       context: ./redis
     volumes:
-      - ./app/src/redis-server/redis-cert.pem:/etc/ssl/certs/redis-cert.pem
-      - ./app/src/redis-server/redis-private.key:/etc/ssl/private/redis-private.key
+      - ./app/src/tls:/etc/redis/tls
       - ./app/src/redis-server/redis.conf:/etc/redis/redis.conf
     restart: always
     
@@ -12,6 +11,8 @@ services:
     build:
       context: ./app
     restart: always
+    volumes: 
+      - ./app/src/tls:/app/tls
     depends_on:
       - redis
     
