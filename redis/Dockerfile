@@ -1,6 +1,6 @@
 FROM debian:12.1
 
-RUN apt update -y && apt install redis-server ca-certificates -y
+RUN apt-get update -y && apt-get install redis-server -y
 
 EXPOSE 6379
 

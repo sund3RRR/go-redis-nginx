@@ -7,20 +7,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 
 	"github.com/redis/go-redis/v9"
 )
 
-var ctx = context.Background()
-
 type DelKeyData struct {
 	Key string `json:"key"`
 }
 
-func set_key(rdb *redis.Client) http.HandlerFunc {
+func set_key(rdb *redis.Client, ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "405 Method not allowed", http.StatusMethodNotAllowed)
@@ -44,14 +41,14 @@ func set_key(rdb *redis.Client) http.HandlerFunc {
 			if err != nil {
 				panic(err)
 			}
-			response_str += fmt.Sprintf("Successfully added %s=%s", key, value)
+			response_str += fmt.Sprintf("Successfully added %s=%s\n", key, value)
 		}
 
 		io.WriteString(w, response_str)
 	}
 }
 
-func get_key(rdb *redis.Client) http.HandlerFunc {
+func get_key(rdb *redis.Client, ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "405 Method not allowed", http.StatusMethodNotAllowed)
@@ -75,7 +72,7 @@ func get_key(rdb *redis.Client) http.HandlerFunc {
 	}
 }
 
-func del_key(rdb *redis.Client) http.HandlerFunc {
+func del_key(rdb *redis.Client, ctx context.Context) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, "405 Method not allowed", http.StatusMethodNotAllowed)
@@ -91,11 +88,16 @@ func del_key(rdb *redis.Client) http.HandlerFunc {
 			http.Error(w, "400 Bad request", http.StatusBadRequest)
 			return
 		}
-		err = rdb.Exists(ctx, keyData.Key).Err()
-		if err != nil {
+
+		res, err := rdb.Exists(ctx, keyData.Key).Result()
+		if res == 0 {
 			http.Error(w, "404 Not found", http.StatusNotFound)
 			return
 		}
+		if err != nil {
+			panic(err)
+		}
+
 		err = rdb.Del(ctx, keyData.Key).Err()
 		if err != nil {
 			panic(err)
@@ -111,36 +113,43 @@ func main() {
 		panic(err)
 	}
 
-	// Load CA cert
 	caCert, err := os.ReadFile("tls/ca.crt")
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
+
 	caCertPool := x509.NewCertPool()
 	caCertPool.AppendCertsFromPEM(caCert)
+
 	tlsConfig := &tls.Config{
 		MinVersion:   tls.VersionTLS12,
 		Certificates: []tls.Certificate{cert},
 		RootCAs:      caCertPool,
 	}
+
 	rdb := redis.NewClient(&redis.Options{
 		Addr:      "redis:6379",
-		Password:  "",
+		Username:  os.Getenv("REDIS_USER"),
+		Password:  os.Getenv("REDIS_PASSWORD"),
 		DB:        0,
 		TLSConfig: tlsConfig,
 	})
+
+	defer rdb.Close()
+
+	ctx := context.Background()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "403 Forbidden", http.StatusForbidden)
 	})
 
-	http.HandleFunc("/get_key", get_key(rdb))
-	http.HandleFunc("/set_key", set_key(rdb))
-	http.HandleFunc("/del_key", del_key(rdb))
+	http.HandleFunc("/get_key", get_key(rdb, ctx))
+	http.HandleFunc("/set_key", set_key(rdb, ctx))
+	http.HandleFunc("/del_key", del_key(rdb, ctx))
 
 	pong, err := rdb.Ping(ctx).Result()
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	fmt.Println(pong)
 

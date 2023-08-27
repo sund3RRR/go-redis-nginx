@@ -5,12 +5,16 @@ services:
     volumes:
       - ./app/src/tls:/etc/redis/tls
       - ./app/src/redis-server/redis.conf:/etc/redis/redis.conf
+      - ./app/src/redis-server/acl.conf:/etc/redis/acl.conf
     restart: always
     
   app:
     build:
       context: ./app
     restart: always
+    environment:
+      - REDIS_USER=sunder
+      - REDIS_PASSWORD=J5ktcAVFPxHBHzfK8Z6GGhTD08EutJ
     volumes: 
       - ./app/src/tls:/app/tls
     depends_on:

@@ -1,7 +1,7 @@
 FROM debian:12.1
 
-RUN apt update -y && apt install nginx -y
+RUN apt-get update -y && apt-get install nginx -y
 
 EXPOSE 8089
 
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["nginx", "-g", "daemon off;", "-c", "/etc/nginx/nginx.conf"]
