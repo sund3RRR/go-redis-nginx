@@ -1,3 +1,4 @@
+version: "3.8"
 services:
   redis:
     build:
@@ -6,6 +7,7 @@ services:
       - ./app/src/tls:/etc/redis/tls
       - ./app/src/redis-server/redis.conf:/etc/redis/redis.conf
       - ./app/src/redis-server/acl.conf:/etc/redis/acl.conf
+      - ./app/src/redis-server/data:/data
     restart: always
     
   app:
@@ -14,6 +16,7 @@ services:
     restart: "no"
     volumes: 
       - ./app/src/tls:/app/tls
+      - ./app/src/cmd/config.yaml:/app/config.yaml
     depends_on:
       - redis
     
@@ -23,7 +26,7 @@ services:
     ports:
       - "8089:8089"
     volumes:
-      - ./app/src/nginx-config:/etc/nginx/
-    restart: always
+      - ./app/src/nginx-config/nginx.conf:/etc/nginx/nginx.conf
+    restart: "no"
     depends_on:
       - app

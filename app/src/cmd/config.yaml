@@ -1,5 +1,6 @@
-serverPort: 8080
-redisHost: "redis"
-redisPort: 6379
-redisUser: "sunder"
-redisPassword: "J5ktcAVFPxHBHzfK8Z6GGhTD08EutJ"
+server_port: 8080
+redis_host: "redis"
+redis_port: 6379
+redis_user: "sunder"
+redis_password: "J5ktcAVFPxHBHzfK8Z6GGhTD08EutJ"
+use_redis_tls: true

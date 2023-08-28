@@ -1,2 +1,3 @@
 .DS_Store
 .vscode/
+app/src/redis-server/data/dump.rdb

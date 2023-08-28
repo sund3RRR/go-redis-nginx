@@ -1,5 +1,7 @@
 FROM debian:12.1
 
+ENV TZ=Europe/Moscow
+
 RUN set -eux; \
     apt-get update -y; \
     apt-get install redis-server -y;

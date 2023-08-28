@@ -12,10 +12,13 @@ import (
 	"os"
 
 	"github.com/redis/go-redis/v9"
+	"go.uber.org/zap"
 )
 
-func SetKey(ctx context.Context, rdb *redis.Client) http.HandlerFunc {
+func setKeyHandler(ctx context.Context, rdb *redis.Client, logger *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logger.Info("Request", zap.String("URL", r.URL.Path), zap.String("Method", r.Method))
+
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -30,21 +33,25 @@ func SetKey(ctx context.Context, rdb *redis.Client) http.HandlerFunc {
 		var jsonData map[string]string
 		if err := json.Unmarshal(resp, &jsonData); err != nil {
 			http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
-			log.Fatal(err)
+			logger.Error("An error occured while unmarshalling JSON", zap.Error(err))
+			return
 		}
 
 		for key, value := range jsonData {
 			if err = rdb.Set(ctx, key, value, 0).Err(); err != nil {
 				http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
-				log.Fatal(err)
+				logger.Error("An error occured while executing redis.Set", zap.Error(err))
+				return
 			}
 			_, _ = io.WriteString(w, fmt.Sprintf("Successfully added %s=%s\n", key, value))
 		}
 	}
 }
 
-func GetKey(ctx context.Context, rdb *redis.Client) http.HandlerFunc {
+func getKeyHandler(ctx context.Context, rdb *redis.Client, logger *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logger.Info("Request", zap.String("URL", r.URL.Path), zap.String("Method", r.Method))
+
 		if r.Method != http.MethodGet {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -63,15 +70,18 @@ func GetKey(ctx context.Context, rdb *redis.Client) http.HandlerFunc {
 				return
 			}
 			http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
-			log.Fatal(err)
+			logger.Error("An error occured while executing redis.Get", zap.Error(err))
+			return
 		}
 
 		_, _ = io.WriteString(w, val)
 	}
 }
 
-func DelKey(ctx context.Context, rdb *redis.Client) http.HandlerFunc {
+func delKeyHandler(ctx context.Context, rdb *redis.Client, logger *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		logger.Info("Request", zap.String("URL", r.URL.Path), zap.String("Method", r.Method))
+
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
@@ -93,7 +103,8 @@ func DelKey(ctx context.Context, rdb *redis.Client) http.HandlerFunc {
 		res, err := rdb.Exists(ctx, keyData.Key).Result()
 		if err != nil {
 			http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
-			log.Fatal(err)
+			logger.Error("An error occured while executing redis.Exists", zap.Error(err))
+			return
 		} else if res == 0 {
 			http.Error(w, "Key doesn't exists", http.StatusNotFound)
 			return
@@ -101,13 +112,19 @@ func DelKey(ctx context.Context, rdb *redis.Client) http.HandlerFunc {
 
 		if err := rdb.Del(ctx, keyData.Key).Err(); err != nil {
 			http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
-			log.Fatal(err)
+			logger.Error("An error occured while executing redis.Del", zap.Error(err))
+			return
 		}
 
 		_, _ = io.WriteString(w, "Successfully removed "+keyData.Key)
 	}
 }
-func SetupRedis(ctx context.Context, config *AppConfig) *redis.Client {
+
+func createTLSConfig(config *AppConfig) *tls.Config {
+	if !config.UseRedisTLS {
+		return nil
+	}
+
 	cert, err := tls.LoadX509KeyPair("tls/redis.crt", "tls/redis.key")
 	if err != nil {
 		log.Fatal(err)
@@ -127,7 +144,14 @@ func SetupRedis(ctx context.Context, config *AppConfig) *redis.Client {
 		RootCAs:      caCertPool,
 	}
 
+	return tlsConfig
+}
+
+func setupRedis(ctx context.Context, config *AppConfig) *redis.Client {
 	address := fmt.Sprintf("%s:%d", config.RedisHost, config.RedisPort)
+
+	tlsConfig := createTLSConfig(config)
+
 	rdb := redis.NewClient(&redis.Options{
 		Addr:      address,
 		Username:  config.RedisUser,
@@ -141,28 +165,36 @@ func SetupRedis(ctx context.Context, config *AppConfig) *redis.Client {
 
 	return rdb
 }
+
 func main() {
-	config, err := LoadConfig("config.yaml")
+	config, err := NewConfig("config.yaml")
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "error: %+v\n", err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 
-	ctx := context.Background()
-	rdb := SetupRedis(ctx, &config)
+	logger, err := config.ZapConfig.Build()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer logger.Sync()
 
+	ctx := context.Background()
+
+	rdb := setupRedis(ctx, config)
 	defer rdb.Close()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "403 Forbidden", http.StatusForbidden)
 	})
 
-	http.HandleFunc("/get_key", GetKey(ctx, rdb))
-	http.HandleFunc("/set_key", SetKey(ctx, rdb))
-	http.HandleFunc("/del_key", DelKey(ctx, rdb))
+	http.HandleFunc("/get_key", getKeyHandler(ctx, rdb, logger))
+	http.HandleFunc("/set_key", setKeyHandler(ctx, rdb, logger))
+	http.HandleFunc("/del_key", delKeyHandler(ctx, rdb, logger))
+
+	logger.Info("Starting server", zap.String("Server port", fmt.Sprintf("%d", config.ServerPort)))
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", config.ServerPort), nil); err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "error: %+v\n", err)
+		logger.Error("An error occured while starting a server", zap.Error(err))
 		os.Exit(1)
 	}
 }
