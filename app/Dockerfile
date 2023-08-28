@@ -16,7 +16,8 @@ ENV PATH /usr/local/go/bin:$GOPATH/bin:$PATH
 
 WORKDIR /app
 
-COPY ./src/go-app .
+COPY ./src/cmd .
+COPY ./src/go.mod .
 
 RUN set -eux; \
 	go mod download; \

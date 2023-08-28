@@ -1,6 +1,8 @@
 FROM debian:12.1
 
-RUN apt-get update -y && apt-get install nginx -y
+RUN set -eux; \
+    apt-get update -y; \
+    apt-get install nginx -y;
 
 EXPOSE 8089
 
