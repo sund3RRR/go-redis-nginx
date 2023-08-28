@@ -11,7 +11,7 @@ services:
   app:
     build:
       context: ./app
-    restart: no
+    restart: "no"
     volumes: 
       - ./app/src/tls:/app/tls
     depends_on:
