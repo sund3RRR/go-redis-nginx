@@ -72,9 +72,9 @@ redis_password: ""
 
 `zap` настроен в *Development* режим:
 ```golang
-    zapConfig := zap.NewDevelopmentConfig()
-	zapConfig.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
+zapConfig := zap.NewDevelopmentConfig()
+zapConfig.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 
-	zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 ```
