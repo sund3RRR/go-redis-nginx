@@ -1,6 +1,6 @@
 # go-redis-nginx
 
-*Практическое задание на позицию стажёра в IT-Security: DevOps* 
+*Практическое задание на позицию стажёра в IT-Security: DevOps в Avito Tech* 
 
 ## О задании
 ### Задача
