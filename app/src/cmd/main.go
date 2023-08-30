@@ -19,7 +19,6 @@ import (
 
 func HasContentType(r *http.Request, mimetype string) bool {
 	contentType := r.Header.Get("Content-type")
-	fmt.Println(contentType)
 	if contentType == "" {
 		return mimetype == "application/octet-stream"
 	}
