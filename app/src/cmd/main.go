@@ -8,12 +8,33 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 )
+
+func HasContentType(r *http.Request, mimetype string) bool {
+	contentType := r.Header.Get("Content-type")
+	fmt.Println(contentType)
+	if contentType == "" {
+		return mimetype == "application/octet-stream"
+	}
+
+	for _, v := range strings.Split(contentType, ",") {
+		t, _, err := mime.ParseMediaType(v)
+		if err != nil {
+			break
+		}
+		if t == mimetype {
+			return true
+		}
+	}
+	return false
+}
 
 func setKeyHandler(ctx context.Context, rdb *redis.Client, logger *zap.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -21,6 +42,10 @@ func setKeyHandler(ctx context.Context, rdb *redis.Client, logger *zap.Logger) h
 
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if !HasContentType(r, "application/json") {
+			http.Error(w, "Unsupported media type", http.StatusUnsupportedMediaType)
 			return
 		}
 
@@ -32,8 +57,7 @@ func setKeyHandler(ctx context.Context, rdb *redis.Client, logger *zap.Logger) h
 
 		var jsonData map[string]string
 		if err := json.Unmarshal(resp, &jsonData); err != nil {
-			http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
-			logger.Error("An error occured while unmarshalling JSON", zap.Error(err))
+			http.Error(w, "Can't parse key value", http.StatusBadRequest)
 			return
 		}
 
@@ -84,6 +108,10 @@ func delKeyHandler(ctx context.Context, rdb *redis.Client, logger *zap.Logger) h
 
 		if r.Method != http.MethodPost {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		if !HasContentType(r, "application/json") {
+			http.Error(w, "Unsupported media type", http.StatusUnsupportedMediaType)
 			return
 		}
 
