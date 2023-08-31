@@ -78,3 +78,31 @@ zapConfig.Level = zap.NewAtomicLevelAt(zap.DebugLevel)
 zapConfig.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 ```
+
+## Установка
+Сборка и запуск проекта были протестированы на архитектурах `amd64` и `arm64`
+
+### Установка зависимостей
+**`.deb` based дистрибутивы**:
+```bash
+sudo apt update && sudo apt install git docker docker-compose -y
+```
+**MacOS Intel/Apple Silicon**:
+
+Скачайте и установите `Docker Desktop` с [официального](https://www.docker.com/products/docker-desktop) сайта
+
+### Клонирование репозитория
+```bash
+git clone https://github.com/sund3RRR/go-redis-nginx.git
+cd go-redis-nginx
+```
+
+### Сборка проекта
+```bash
+docker-compose build
+```
+
+### Запуск
+```bash
+docker-compose up
+```
